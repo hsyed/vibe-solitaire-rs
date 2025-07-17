@@ -1,8 +1,28 @@
+use std::fmt;
 use crate::game::actions::DrawCount;
-use crate::game::card::{Card, create_deck};
+use crate::game::deck::{Card, create_deck};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::time::SystemTime;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Position {
+    Tableau(usize, usize), // column, index in column
+    Foundation(usize),     // foundation pile index (0-3)
+    Stock,
+    Waste(usize), // index in waste pile
+}
+
+impl fmt::Display for Position {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Position::Tableau(col, idx) => write!(f, "Tableau({}, {})", col, idx),
+            Position::Foundation(idx) => write!(f, "Foundation({})", idx),
+            Position::Stock => write!(f, "Stock"),
+            Position::Waste(idx) => write!(f, "Waste({})", idx),
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct GameState {
@@ -158,7 +178,7 @@ impl Default for GameState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::game::card::{Rank, Suit};
+    use crate::game::deck::{Rank, Suit};
 
     #[test]
     fn test_game_state_creation() {
@@ -311,5 +331,18 @@ mod tests {
             assert!(!cards1.is_empty(), "Should have cards in tableau");
             assert_eq!(cards1.len(), 7, "Should have 7 tableau columns");
         }
+    }
+
+    #[test]
+    fn test_position_display() {
+        let tableau_pos = Position::Tableau(2, 5);
+        let foundation_pos = Position::Foundation(1);
+        let stock_pos = Position::Stock;
+        let waste_pos = Position::Waste(3);
+
+        assert_eq!(format!("{}", tableau_pos), "Tableau(2, 5)");
+        assert_eq!(format!("{}", foundation_pos), "Foundation(1)");
+        assert_eq!(format!("{}", stock_pos), "Stock");
+        assert_eq!(format!("{}", waste_pos), "Waste(3)");
     }
 }

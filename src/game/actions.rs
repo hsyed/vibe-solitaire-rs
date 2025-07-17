@@ -1,4 +1,4 @@
-use crate::game::card::Position;
+use crate::game::state::Position;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum GameAction {

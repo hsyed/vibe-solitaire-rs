@@ -7,39 +7,6 @@ pub struct Card {
     pub face_up: bool,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Suit {
-    Hearts,
-    Diamonds,
-    Clubs,
-    Spades,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Rank {
-    Ace = 1,
-    Two = 2,
-    Three = 3,
-    Four = 4,
-    Five = 5,
-    Six = 6,
-    Seven = 7,
-    Eight = 8,
-    Nine = 9,
-    Ten = 10,
-    Jack = 11,
-    Queen = 12,
-    King = 13,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Position {
-    Tableau(usize, usize), // column, index in column
-    Foundation(usize),     // foundation pile index (0-3)
-    Stock,
-    Waste(usize), // index in waste pile
-}
-
 impl Card {
     pub fn new(suit: Suit, rank: Rank, face_up: bool) -> Self {
         Card {
@@ -101,6 +68,25 @@ impl Card {
     }
 }
 
+impl fmt::Display for Card {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.face_up {
+            write!(f, "{}{}", self.rank.display(), self.suit.symbol())
+        } else {
+            write!(f, "🂠") // Card back symbol
+        }
+    }
+}
+
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Suit {
+    Hearts,
+    Diamonds,
+    Clubs,
+    Spades,
+}
+
 impl Suit {
     /// Get all suits in order
     pub fn all() -> [Suit; 4] {
@@ -117,6 +103,30 @@ impl Suit {
         }
     }
 }
+
+impl fmt::Display for Suit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.symbol())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Rank {
+    Ace = 1,
+    Two = 2,
+    Three = 3,
+    Four = 4,
+    Five = 5,
+    Six = 6,
+    Seven = 7,
+    Eight = 8,
+    Nine = 9,
+    Ten = 10,
+    Jack = 11,
+    Queen = 12,
+    King = 13,
+}
+
 
 impl Rank {
     /// Get all ranks in order
@@ -158,21 +168,6 @@ impl Rank {
     }
 }
 
-impl fmt::Display for Card {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.face_up {
-            write!(f, "{}{}", self.rank.display(), self.suit.symbol())
-        } else {
-            write!(f, "🂠") // Card back symbol
-        }
-    }
-}
-
-impl fmt::Display for Suit {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.symbol())
-    }
-}
 
 impl fmt::Display for Rank {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -180,16 +175,7 @@ impl fmt::Display for Rank {
     }
 }
 
-impl fmt::Display for Position {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Position::Tableau(col, idx) => write!(f, "Tableau({}, {})", col, idx),
-            Position::Foundation(idx) => write!(f, "Foundation({})", idx),
-            Position::Stock => write!(f, "Stock"),
-            Position::Waste(idx) => write!(f, "Waste({})", idx),
-        }
-    }
-}
+
 
 /// Create a standard 52-card deck
 pub fn create_deck() -> Vec<Card> {
@@ -328,18 +314,7 @@ mod tests {
         assert_eq!(format!("{}", face_down_card), "🂠");
     }
 
-    #[test]
-    fn test_position_display() {
-        let tableau_pos = Position::Tableau(2, 5);
-        let foundation_pos = Position::Foundation(1);
-        let stock_pos = Position::Stock;
-        let waste_pos = Position::Waste(3);
 
-        assert_eq!(format!("{}", tableau_pos), "Tableau(2, 5)");
-        assert_eq!(format!("{}", foundation_pos), "Foundation(1)");
-        assert_eq!(format!("{}", stock_pos), "Stock");
-        assert_eq!(format!("{}", waste_pos), "Waste(3)");
-    }
 
     #[test]
     fn test_suit_and_rank_symbols() {
