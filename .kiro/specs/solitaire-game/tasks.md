@@ -30,7 +30,7 @@
   - Show sample cards in the app window to verify rendering
   - _Requirements: 7.1, 7.2, 7.5_
 
-- [ ] 5. Implement complete game board layout
+- [x] 5. Implement complete game board layout
   - Create GameBoard component with tableau, foundations, stock, and waste areas
   - Implement proper spacing and positioning for all game areas
   - Add empty pile placeholders with visual indicators

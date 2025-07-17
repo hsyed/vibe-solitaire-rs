@@ -90,73 +90,7 @@ impl GameState {
         game_state.draw_count = draw_count;
         game_state
     }
-
-    /// Get debug information about the current game state
-    pub fn debug_info(&self) -> String {
-        let mut info = String::new();
-
-        info.push_str(&format!("=== SOLITAIRE GAME STATE DEBUG ===\n"));
-        info.push_str(&format!("Move Count: {}\n", self.move_count));
-        info.push_str(&format!("Draw Count: {:?}\n", self.draw_count));
-        info.push_str(&format!("Game Won: {}\n", self.game_won));
-        info.push_str(&format!("Stock Cards: {}\n", self.stock.len()));
-        info.push_str(&format!("Waste Cards: {}\n", self.waste.len()));
-
-        // Tableau information
-        info.push_str("\n--- TABLEAU ---\n");
-        for (col, pile) in self.tableau.iter().enumerate() {
-            info.push_str(&format!("Column {}: {} cards - ", col, pile.len()));
-            if pile.is_empty() {
-                info.push_str("(empty)\n");
-            } else {
-                for (i, card) in pile.iter().enumerate() {
-                    if i > 0 {
-                        info.push_str(", ");
-                    }
-                    info.push_str(&format!("{}", card));
-                }
-                info.push_str("\n");
-            }
-        }
-
-        // Foundation information
-        info.push_str("\n--- FOUNDATIONS ---\n");
-        let suit_names = ["Hearts", "Diamonds", "Clubs", "Spades"];
-        for (i, pile) in self.foundations.iter().enumerate() {
-            info.push_str(&format!("{}: ", suit_names[i]));
-            if pile.is_empty() {
-                info.push_str("(empty)\n");
-            } else {
-                info.push_str(&format!(
-                    "{} cards, top: {}\n",
-                    pile.len(),
-                    pile.last().unwrap()
-                ));
-            }
-        }
-
-        // Stock and Waste
-        info.push_str("\n--- STOCK & WASTE ---\n");
-        info.push_str(&format!(
-            "Stock: {} cards (all face-down)\n",
-            self.stock.len()
-        ));
-        info.push_str(&format!("Waste: "));
-        if self.waste.is_empty() {
-            info.push_str("(empty)\n");
-        } else {
-            for (i, card) in self.waste.iter().enumerate() {
-                if i > 0 {
-                    info.push_str(", ");
-                }
-                info.push_str(&format!("{}", card));
-            }
-            info.push_str("\n");
-        }
-
-        info
-    }
-
+    
     /// Get a summary of the current game state for display
     pub fn summary(&self) -> String {
         format!(
@@ -260,31 +194,6 @@ mod tests {
 
         assert_eq!(game_state_one.draw_count, DrawCount::One);
         assert_eq!(game_state_three.draw_count, DrawCount::Three);
-    }
-
-    #[test]
-    fn test_debug_info_format() {
-        let game_state = GameState::new();
-        let debug_info = game_state.debug_info();
-
-        // Check that debug info contains expected sections
-        assert!(debug_info.contains("=== SOLITAIRE GAME STATE DEBUG ==="));
-        assert!(debug_info.contains("--- TABLEAU ---"));
-        assert!(debug_info.contains("--- FOUNDATIONS ---"));
-        assert!(debug_info.contains("--- STOCK & WASTE ---"));
-
-        // Check that it shows move count
-        assert!(debug_info.contains("Move Count: 0"));
-
-        // Check that it shows draw count
-        assert!(debug_info.contains("Draw Count: Three"));
-    }
-
-    #[test]
-    fn test_print_debug_output() {
-        let game_state = GameState::new();
-        println!("\n{}", game_state.debug_info());
-        println!("Summary: {}", game_state.summary());
     }
 
     #[test]
