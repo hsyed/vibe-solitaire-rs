@@ -1,15 +1,13 @@
 use gpui::{
-    AppContext, Application, Context, FontWeight, InteractiveElement, IntoElement, MouseDownEvent,
-    ParentElement, Render, Styled, Window, WindowOptions, div, px, rgb, white,
+    AppContext, Application, Context, FontWeight, InteractiveElement, IntoElement, KeyBinding,
+    ParentElement, Render, Styled, Window, WindowOptions, actions, div, px, rgb, white,
 };
 
 mod game;
 mod ui;
 
 use game::actions::GameAction;
-use game::deck::Card;
 use game::state::{GameState, Position};
-use ui::render_game_board;
 
 struct SolitaireApp {
     game_state: GameState,
@@ -124,10 +122,13 @@ impl SolitaireApp {
                 .justify_center()
                 .cursor_pointer()
                 .hover(|style| style.border_color(rgb(0x3B82F6)))
-                .on_mouse_down(gpui::MouseButton::Left, cx.listener(|app, _event, _window, cx| {
-                    println!("Stock pile clicked! (empty) - Recycling waste to stock");
-                    app.handle_action(GameAction::DealFromStock, cx);
-                }))
+                .on_mouse_down(
+                    gpui::MouseButton::Left,
+                    cx.listener(|app, _event, _window, cx| {
+                        println!("Stock pile clicked! (empty) - Recycling waste to stock");
+                        app.handle_action(GameAction::DealFromStock, cx);
+                    }),
+                )
                 .child(
                     div()
                         .text_color(rgb(0x9CA3AF))
@@ -147,10 +148,13 @@ impl SolitaireApp {
                 .shadow_lg()
                 .cursor_pointer()
                 .hover(|style| style.shadow_xl().border_color(rgb(0x3B82F6)))
-                .on_mouse_down(gpui::MouseButton::Left, cx.listener(|app, _event, _window, cx| {
-                    println!("Stock pile clicked! (with cards) - Dealing cards");
-                    app.handle_action(GameAction::DealFromStock, cx);
-                }))
+                .on_mouse_down(
+                    gpui::MouseButton::Left,
+                    cx.listener(|app, _event, _window, cx| {
+                        println!("Stock pile clicked! (with cards) - Dealing cards");
+                        app.handle_action(GameAction::DealFromStock, cx);
+                    }),
+                )
                 .child(
                     div()
                         .size_full()
@@ -204,9 +208,21 @@ impl Render for SolitaireApp {
 
 fn main() {
     Application::new().run(|cx| {
-        cx.open_window(WindowOptions::default(), |_, cx| {
-            cx.new(|_| SolitaireApp::new())
+        // Configure the application to quit when all windows are closed
+        cx.activate(true);
+
+        cx.on_window_closed(|cx| {
+            if cx.windows().is_empty() {
+                cx.quit();
+            }
         })
-        .unwrap();
+        .detach();
+
+        // Open the main window
+        let _window = cx
+            .open_window(WindowOptions::default(), |_, cx| {
+                cx.new(|_| SolitaireApp::new())
+            })
+            .unwrap();
     });
 }

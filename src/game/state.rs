@@ -90,7 +90,7 @@ impl GameState {
         game_state.draw_count = draw_count;
         game_state
     }
-    
+
     /// Get a summary of the current game state for display
     pub fn summary(&self) -> String {
         format!(
@@ -123,7 +123,7 @@ impl GameState {
             if self.waste.is_empty() {
                 return Err("Both stock and waste are empty".to_string());
             }
-            
+
             // Move waste back to stock, face-down, in reverse order
             while let Some(mut card) = self.waste.pop() {
                 card.face_up = false;
@@ -157,7 +157,7 @@ impl GameState {
                 if col >= 7 {
                     return Err("Invalid tableau column".to_string());
                 }
-                
+
                 let pile = &mut self.tableau[col];
                 if idx >= pile.len() {
                     return Err("Invalid card index in tableau".to_string());
@@ -400,12 +400,12 @@ mod tests {
     #[test]
     fn test_deal_from_empty_stock_recycles_waste() {
         let mut game_state = GameState::new();
-        
+
         // Empty the stock by dealing all cards
         while !game_state.stock.is_empty() {
             let _ = game_state.deal_from_stock();
         }
-        
+
         let waste_count_before_recycle = game_state.waste.len();
         assert!(waste_count_before_recycle > 0);
         assert!(game_state.stock.is_empty());
@@ -425,7 +425,7 @@ mod tests {
     #[test]
     fn test_flip_card_in_tableau() {
         let mut game_state = GameState::new();
-        
+
         // Find a tableau column with face-down cards
         let mut test_col = None;
         for (col, pile) in game_state.tableau.iter().enumerate() {
@@ -447,16 +447,16 @@ mod tests {
             // Remove the top card to expose a face-down card
             let top_card = game_state.tableau[col].pop().unwrap();
             let top_idx = game_state.tableau[col].len() - 1;
-            
+
             // The newly exposed card should be face-down
             assert!(!game_state.tableau[col][top_idx].face_up);
-            
+
             // Flip the card
             let result = game_state.flip_card(Position::Tableau(col, top_idx));
             assert!(result.is_ok());
             assert!(game_state.tableau[col][top_idx].face_up);
             assert_eq!(game_state.move_count, 1);
-            
+
             // Put the top card back
             game_state.tableau[col].push(top_card);
         }
@@ -465,19 +465,19 @@ mod tests {
     #[test]
     fn test_flip_card_errors() {
         let mut game_state = GameState::new();
-        
+
         // Try to flip card in invalid column
         let result = game_state.flip_card(Position::Tableau(7, 0));
         assert!(result.is_err());
-        
+
         // Try to flip card with invalid index
         let result = game_state.flip_card(Position::Tableau(0, 10));
         assert!(result.is_err());
-        
+
         // Try to flip already face-up card (top card in tableau is face-up)
         let result = game_state.flip_card(Position::Tableau(0, 0));
         assert!(result.is_err());
-        
+
         // Try to flip non-tableau position
         let result = game_state.flip_card(Position::Stock);
         assert!(result.is_err());
@@ -486,22 +486,22 @@ mod tests {
     #[test]
     fn test_can_click_position() {
         let game_state = GameState::new();
-        
+
         // Can always click stock
         assert!(game_state.can_click_position(Position::Stock));
-        
+
         // Can click top card in tableau
         assert!(game_state.can_click_position(Position::Tableau(0, 0))); // Column 0 has 1 card
         assert!(game_state.can_click_position(Position::Tableau(6, 6))); // Column 6 has 7 cards
-        
+
         // Cannot click non-top cards in tableau
         assert!(!game_state.can_click_position(Position::Tableau(6, 0))); // Not top card
         assert!(!game_state.can_click_position(Position::Tableau(6, 5))); // Not top card
-        
+
         // Cannot click invalid positions
         assert!(!game_state.can_click_position(Position::Tableau(7, 0))); // Invalid column
         assert!(!game_state.can_click_position(Position::Tableau(0, 5))); // Invalid index
-        
+
         // Cannot click waste or foundation yet
         assert!(!game_state.can_click_position(Position::Waste(0)));
         assert!(!game_state.can_click_position(Position::Foundation(0)));
