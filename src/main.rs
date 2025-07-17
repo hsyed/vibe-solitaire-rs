@@ -8,7 +8,7 @@ mod ui;
 
 use game::deck::{Card, Rank, Suit};
 use game::state::GameState;
-use ui::CardView;
+use ui::render_card;
 
 struct SolitaireApp {
     game_state: GameState,
@@ -22,7 +22,6 @@ impl SolitaireApp {
     }
 }
 
-// TODO move this render logic elsewhere ?
 impl Render for SolitaireApp {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         div()
@@ -56,15 +55,14 @@ impl Render for SolitaireApp {
                             .gap_4()
                             .flex_wrap()
                             .p_4()
-                            // TODO these children should be cached somehow ? 
-                            .child(CardView::new(Card::new(Suit::Hearts, Rank::Ace, true)))
-                            .child(CardView::new(Card::new(Suit::Diamonds, Rank::King, true)))
-                            .child(CardView::new(Card::new(Suit::Clubs, Rank::Queen, true)))
-                            .child(CardView::new(Card::new(Suit::Spades, Rank::Jack, true)))
-                            .child(CardView::new(Card::new(Suit::Hearts, Rank::Ten, true)))
-                            .child(CardView::new(Card::new(Suit::Diamonds, Rank::Two, true)))
-                            .child(CardView::new(Card::new(Suit::Clubs, Rank::Seven, false))) // Face down
-                            .child(CardView::new(Card::new(Suit::Spades, Rank::Five, false))), // Face down
+                            .child(render_card(Card::new(Suit::Hearts, Rank::Ace, true)))
+                            .child(render_card(Card::new(Suit::Diamonds, Rank::King, true)))
+                            .child(render_card(Card::new(Suit::Clubs, Rank::Queen, true)))
+                            .child(render_card(Card::new(Suit::Spades, Rank::Jack, true)))
+                            .child(render_card(Card::new(Suit::Hearts, Rank::Ten, true)))
+                            .child(render_card(Card::new(Suit::Diamonds, Rank::Two, true)))
+                            .child(render_card(Card::new(Suit::Clubs, Rank::Seven, false))) // Face down
+                            .child(render_card(Card::new(Suit::Spades, Rank::Five, false))), // Face down
                     )
                     .child(
                         div()
