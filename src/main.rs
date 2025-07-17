@@ -1,6 +1,7 @@
 use gpui::{
     AppContext, Application, Context, FontWeight, InteractiveElement, IntoElement, MouseButton,
     ParentElement, Render, Styled, Window, WindowOptions, div, px, rgb, white, Point, Pixels,
+    MouseMoveEvent,
 };
 
 mod game;
@@ -16,6 +17,7 @@ pub struct DragState {
     pub source_position: Position,
     pub current_mouse_position: Point<Pixels>,
     pub valid_drop_targets: Vec<Position>,
+    pub drag_offset: Point<Pixels>, // Offset from mouse to card origin
 }
 
 struct SolitaireApp {
@@ -54,6 +56,7 @@ impl SolitaireApp {
                 source_position: position,
                 current_mouse_position: mouse_position,
                 valid_drop_targets,
+                drag_offset: Point::new(px(0.0), px(0.0)), // Default offset for now
             });
             
             println!("Started dragging from {:?} with {} cards", position, self.drag_state.as_ref().unwrap().dragged_cards.len());
@@ -83,56 +86,10 @@ impl SolitaireApp {
     }
 
     fn get_draggable_cards(&self, position: Position) -> Vec<Card> {
-        match position {
-            Position::Tableau(col, idx) => {
-                if col >= 7 || idx >= self.game_state.tableau[col].len() {
-                    return Vec::new();
-                }
-                
-                let pile = &self.game_state.tableau[col];
-                
-                // Can only drag face-up cards from the specified position to the end
-                if idx >= pile.len() || !pile[idx].face_up {
-                    return Vec::new();
-                }
-                
-                // Check if we can drag a sequence starting from this position
-                let mut draggable_cards = Vec::new();
-                
-                // Add the clicked card
-                draggable_cards.push(pile[idx]);
-                
-                // Add subsequent cards if they form a valid descending sequence
-                for i in (idx + 1)..pile.len() {
-                    let current_card = pile[i];
-                    let previous_card = pile[i - 1];
-                    
-                    // Must be face-up, alternating colors, and descending rank
-                    if current_card.face_up && 
-                       current_card.can_place_on_tableau(&previous_card) {
-                        draggable_cards.push(current_card);
-                    } else {
-                        break; // Stop if sequence is broken
-                    }
-                }
-                
-                // Only allow dragging if we're starting from a valid position
-                // (either top card or start of a valid sequence)
-                if idx == pile.len() - draggable_cards.len() {
-                    draggable_cards
-                } else {
-                    Vec::new()
-                }
-            }
-            Position::Waste(idx) => {
-                // Can drag the top card from waste
-                if idx == self.game_state.waste.len() - 1 && !self.game_state.waste.is_empty() {
-                    vec![self.game_state.waste[idx]]
-                } else {
-                    Vec::new()
-                }
-            }
-            _ => Vec::new(), // Can't drag from stock or foundation for now
+        // Use the game state's logic to get draggable cards
+        match self.game_state.get_cards_at_position(position) {
+            Ok(cards) => cards,
+            Err(_) => Vec::new(),
         }
     }
 
@@ -141,22 +98,24 @@ impl SolitaireApp {
             return Vec::new();
         }
         
-        let card = cards[0]; // For now, we only handle single card moves
+        let first_card = cards[0]; // The card that will be placed on the destination
         let mut targets = Vec::new();
         
         // Check tableau columns
         for col in 0..7 {
             let tableau_pos = Position::Tableau(col, self.game_state.tableau[col].len());
-            if self.can_drop_on_tableau(card, col) && !self.is_same_position(source, Position::Tableau(col, 0)) {
+            if self.can_drop_on_tableau(first_card, col) && !self.is_same_position(source, Position::Tableau(col, 0)) {
                 targets.push(tableau_pos);
             }
         }
         
-        // Check foundation piles
-        for foundation in 0..4 {
-            let foundation_pos = Position::Foundation(foundation);
-            if self.can_drop_on_foundation(card, foundation) {
-                targets.push(foundation_pos);
+        // Check foundation piles (only for single cards)
+        if cards.len() == 1 {
+            for foundation in 0..4 {
+                let foundation_pos = Position::Foundation(foundation);
+                if self.can_drop_on_foundation(first_card, foundation) {
+                    targets.push(foundation_pos);
+                }
             }
         }
         
@@ -195,6 +154,13 @@ impl SolitaireApp {
         }
     }
 
+    fn update_drag_position(&mut self, mouse_position: Point<Pixels>, cx: &mut Context<Self>) {
+        if let Some(ref mut drag_state) = self.drag_state {
+            drag_state.current_mouse_position = mouse_position;
+            cx.notify(); // Trigger re-render to update overlay position
+        }
+    }
+
     fn render_game_board_with_drag_drop(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
         let drag_info = if let Some(ref drag_state) = self.drag_state {
             format!("Dragging {} cards from {:?} - {} valid targets (highlighted in green)", 
@@ -202,7 +168,7 @@ impl SolitaireApp {
                 drag_state.source_position,
                 drag_state.valid_drop_targets.len())
         } else {
-            "Click on face-up cards to drag them!".to_string()
+            "Click on face-up cards to drag them! Try dragging card sequences too!".to_string()
         };
 
         div()
@@ -210,6 +176,14 @@ impl SolitaireApp {
             .flex_col()
             .size_full()
             .gap_4()
+            .on_mouse_move(cx.listener(|app, event: &gpui::MouseMoveEvent, _window, cx| {
+                // Update drag position when mouse moves
+                app.update_drag_position(event.position, cx);
+            }))
+            .on_mouse_up(MouseButton::Left, cx.listener(|app, _event, _window, cx| {
+                // End drag operation when mouse is released (cancel if no valid target)
+                app.end_drag(None, cx);
+            }))
             .child(
                 // Drag state info
                 div()
@@ -297,9 +271,10 @@ impl SolitaireApp {
             for (i, card) in cards.iter().enumerate() {
                 let position = Position::Tableau(col, i);
                 let is_top_card = i == cards.len() - 1;
+                let is_draggable = card.face_up && !self.get_draggable_cards(position).is_empty();
 
-                let mut card_element = if is_top_card && card.face_up {
-                    // Top face-up card - make it draggable with proper positioning
+                let mut card_element = if is_draggable {
+                    // Face-up card that can be dragged (either single or as part of sequence)
                     div()
                         .relative() // Ensure proper positioning
                         .child(ui::render_card(*card))
@@ -505,7 +480,7 @@ impl SolitaireApp {
                 )
         } else {
             // Foundation with cards - show top card with drop functionality
-            let mut card_element = ui::render_card(*cards.last().unwrap());
+            let card_element = ui::render_card(*cards.last().unwrap());
             
             if is_valid_drop_target {
                 // Wrap in highlighted container with drop functionality
@@ -526,6 +501,48 @@ impl SolitaireApp {
             }
         }
     }
+
+    fn render_dragged_cards_overlay(&self) -> impl IntoElement {
+        if let Some(ref drag_state) = self.drag_state {
+            // Create a visual representation of the dragged cards following the cursor
+            // Offset the cards slightly from the cursor for better visibility
+            let offset_x = px(-ui::CARD_WIDTH / 2.0); // Center horizontally on cursor
+            let offset_y = px(-ui::CARD_HEIGHT / 4.0); // Slightly above cursor
+            
+            let mut overlay = div()
+                .absolute()
+                .left(drag_state.current_mouse_position.x + offset_x)
+                .top(drag_state.current_mouse_position.y + offset_y)
+                .flex()
+                .flex_col();
+
+            // Render each dragged card with slight offset to show sequence
+            for (i, card) in drag_state.dragged_cards.iter().enumerate() {
+                let card_element = div()
+                    .child(ui::render_card(*card))
+                    .opacity(0.9) // Semi-transparent to show it's being dragged
+                    .shadow_2xl() // Strong shadow for visual feedback
+                    .border_2()
+                    .border_color(rgb(0x3B82F6)); // Blue border to indicate dragging
+
+                if i == 0 {
+                    overlay = overlay.child(card_element);
+                } else {
+                    // Stack subsequent cards with small offset to show sequence
+                    overlay = overlay.child(
+                        div()
+                            .mt(px(-ui::CARD_HEIGHT + 12.0)) // Smaller offset for dragged cards
+                            .child(card_element)
+                    );
+                }
+            }
+
+            overlay
+        } else {
+            // No drag in progress, return empty div
+            div().w(px(0.0)).h(px(0.0))
+        }
+    }
 }
 
 impl Render for SolitaireApp {
@@ -536,6 +553,7 @@ impl Render for SolitaireApp {
             .size_full()
             .bg(rgb(0x0F5132)) // Green felt background
             .p_4()
+            .relative() // Enable absolute positioning for overlay
             .child(
                 div()
                     .flex()
@@ -562,6 +580,10 @@ impl Render for SolitaireApp {
                         // Main game board with drag and drop functionality
                         self.render_game_board_with_drag_drop(cx),
                     ),
+            )
+            .child(
+                // Dragged cards overlay (rendered on top)
+                self.render_dragged_cards_overlay()
             )
     }
 }

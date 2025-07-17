@@ -213,7 +213,7 @@ impl GameState {
         Ok(())
     }
 
-    fn get_cards_at_position(&self, position: Position) -> Result<Vec<Card>, String> {
+    pub fn get_cards_at_position(&self, position: Position) -> Result<Vec<Card>, String> {
         match position {
             Position::Tableau(col, idx) => {
                 if col >= 7 {
@@ -223,11 +223,18 @@ impl GameState {
                 if idx >= pile.len() {
                     return Err("Invalid card index".to_string());
                 }
-                // For now, only move single cards from the top
-                if idx == pile.len() - 1 {
-                    Ok(vec![pile[idx]])
+                
+                // Get all cards from the specified index to the end (card sequences)
+                let mut cards = Vec::new();
+                for i in idx..pile.len() {
+                    cards.push(pile[i]);
+                }
+                
+                // Validate that this forms a valid sequence
+                if self.is_valid_card_sequence(&cards) {
+                    Ok(cards)
                 } else {
-                    Err("Can only move top card".to_string())
+                    Err("Invalid card sequence".to_string())
                 }
             }
             Position::Waste(idx) => {
@@ -244,12 +251,38 @@ impl GameState {
         }
     }
 
-    fn is_valid_move(&self, cards: &[Card], from: Position, to: Position) -> bool {
+    /// Check if a sequence of cards forms a valid descending alternating color sequence
+    fn is_valid_card_sequence(&self, cards: &[Card]) -> bool {
+        if cards.is_empty() {
+            return false;
+        }
+        
+        // Single card is always valid
+        if cards.len() == 1 {
+            return cards[0].face_up;
+        }
+        
+        // All cards must be face-up
+        if !cards.iter().all(|card| card.face_up) {
+            return false;
+        }
+        
+        // Check that each card can be placed on the previous one (descending alternating colors)
+        for i in 1..cards.len() {
+            if !cards[i].can_place_on_tableau(&cards[i - 1]) {
+                return false;
+            }
+        }
+        
+        true
+    }
+
+    fn is_valid_move(&self, cards: &[Card], _from: Position, to: Position) -> bool {
         if cards.is_empty() {
             return false;
         }
 
-        let card = cards[0]; // For single card moves
+        let first_card = cards[0]; // The card that will be placed on the destination
 
         match to {
             Position::Tableau(col, _) => {
@@ -259,19 +292,23 @@ impl GameState {
                 let pile = &self.tableau[col];
                 if pile.is_empty() {
                     // Can only place King on empty tableau
-                    card.rank == crate::game::deck::Rank::King
+                    first_card.rank == crate::game::deck::Rank::King
                 } else {
                     let top_card = pile.last().unwrap();
-                    card.can_place_on_tableau(top_card)
+                    first_card.can_place_on_tableau(top_card)
                 }
             }
             Position::Foundation(foundation) => {
                 if foundation >= 4 {
                     return false;
                 }
+                // Foundation can only accept single cards
+                if cards.len() != 1 {
+                    return false;
+                }
                 let pile = &self.foundations[foundation];
                 let top_card = pile.last();
-                card.can_place_on_foundation(top_card)
+                first_card.can_place_on_foundation(top_card)
             }
             _ => false, // Can't move to stock or waste
         }

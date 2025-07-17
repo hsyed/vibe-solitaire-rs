@@ -52,7 +52,7 @@
   - Show working drag-and-drop with visual feedback in running app
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 8. Enhance drag and drop with card sequences and visual feedback
+- [x] 8. Enhance drag and drop with card sequences and visual feedback
   - Implement dragging sequences of cards (not just single cards)
   - Add visual drag feedback showing cards following mouse cursor
   - Improve drop zone highlighting and feedback
