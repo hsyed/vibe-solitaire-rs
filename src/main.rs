@@ -1,22 +1,33 @@
 use gpui::{
-    AppContext, Application, Context, FontWeight, InteractiveElement, IntoElement, KeyBinding,
-    ParentElement, Render, Styled, Window, WindowOptions, actions, div, px, rgb, white,
+    AppContext, Application, Context, FontWeight, InteractiveElement, IntoElement, MouseButton,
+    ParentElement, Render, Styled, Window, WindowOptions, div, px, rgb, white, Point, Pixels,
 };
 
 mod game;
 mod ui;
 
 use game::actions::GameAction;
+use game::deck::Card;
 use game::state::{GameState, Position};
+
+#[derive(Debug, Clone)]
+pub struct DragState {
+    pub dragged_cards: Vec<Card>,
+    pub source_position: Position,
+    pub current_mouse_position: Point<Pixels>,
+    pub valid_drop_targets: Vec<Position>,
+}
 
 struct SolitaireApp {
     game_state: GameState,
+    drag_state: Option<DragState>,
 }
 
 impl SolitaireApp {
     fn new() -> Self {
         Self {
             game_state: GameState::new(),
+            drag_state: None,
         }
     }
 
@@ -33,29 +44,165 @@ impl SolitaireApp {
         }
     }
 
-    fn handle_stock_click(&mut self, cx: &mut Context<Self>) {
-        self.handle_action(GameAction::DealFromStock, cx);
+    fn start_drag(&mut self, position: Position, mouse_position: Point<Pixels>, cx: &mut Context<Self>) {
+        let dragged_cards = self.get_draggable_cards(position);
+        if !dragged_cards.is_empty() {
+            let valid_drop_targets = self.get_valid_drop_targets(&dragged_cards, position);
+            
+            self.drag_state = Some(DragState {
+                dragged_cards,
+                source_position: position,
+                current_mouse_position: mouse_position,
+                valid_drop_targets,
+            });
+            
+            println!("Started dragging from {:?} with {} cards", position, self.drag_state.as_ref().unwrap().dragged_cards.len());
+            cx.notify();
+        }
     }
 
-    fn handle_tableau_click(&mut self, position: Position, cx: &mut Context<Self>) {
-        // Check if this is a face-down card that can be flipped
-        if let Position::Tableau(col, idx) = position {
-            if let Some(card) = self.game_state.tableau[col].get(idx) {
-                if !card.face_up {
-                    self.handle_action(GameAction::FlipCard(position), cx);
-                    return;
+    fn end_drag(&mut self, drop_position: Option<Position>, cx: &mut Context<Self>) {
+        if let Some(drag_state) = self.drag_state.take() {
+            if let Some(target) = drop_position {
+                if drag_state.valid_drop_targets.contains(&target) {
+                    // Perform the move
+                    let move_action = GameAction::MoveCard {
+                        from: drag_state.source_position,
+                        to: target,
+                    };
+                    self.handle_action(move_action, cx);
+                    println!("Dropped cards at {:?}", target);
+                } else {
+                    println!("Invalid drop target: {:?}", target);
+                }
+            } else {
+                println!("Drag cancelled - no drop target");
+            }
+            cx.notify();
+        }
+    }
+
+    fn get_draggable_cards(&self, position: Position) -> Vec<Card> {
+        match position {
+            Position::Tableau(col, idx) => {
+                if col >= 7 || idx >= self.game_state.tableau[col].len() {
+                    return Vec::new();
+                }
+                
+                let pile = &self.game_state.tableau[col];
+                
+                // Can only drag face-up cards from the specified position to the end
+                if idx >= pile.len() || !pile[idx].face_up {
+                    return Vec::new();
+                }
+                
+                // Check if we can drag a sequence starting from this position
+                let mut draggable_cards = Vec::new();
+                
+                // Add the clicked card
+                draggable_cards.push(pile[idx]);
+                
+                // Add subsequent cards if they form a valid descending sequence
+                for i in (idx + 1)..pile.len() {
+                    let current_card = pile[i];
+                    let previous_card = pile[i - 1];
+                    
+                    // Must be face-up, alternating colors, and descending rank
+                    if current_card.face_up && 
+                       current_card.can_place_on_tableau(&previous_card) {
+                        draggable_cards.push(current_card);
+                    } else {
+                        break; // Stop if sequence is broken
+                    }
+                }
+                
+                // Only allow dragging if we're starting from a valid position
+                // (either top card or start of a valid sequence)
+                if idx == pile.len() - draggable_cards.len() {
+                    draggable_cards
+                } else {
+                    Vec::new()
                 }
             }
+            Position::Waste(idx) => {
+                // Can drag the top card from waste
+                if idx == self.game_state.waste.len() - 1 && !self.game_state.waste.is_empty() {
+                    vec![self.game_state.waste[idx]]
+                } else {
+                    Vec::new()
+                }
+            }
+            _ => Vec::new(), // Can't drag from stock or foundation for now
         }
-        // Otherwise, it's a move action (not implemented yet)
-        println!("Card move not implemented yet: {:?}", position);
     }
 
-    fn render_game_board_with_stock_click(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
-        use crate::game::deck::{Card, Rank, Suit};
-        use ui::{
-            CARD_HEIGHT, CARD_WIDTH, render_foundation_pile, render_tableau_column,
-            render_waste_pile,
+    fn get_valid_drop_targets(&self, cards: &[Card], source: Position) -> Vec<Position> {
+        if cards.is_empty() {
+            return Vec::new();
+        }
+        
+        let card = cards[0]; // For now, we only handle single card moves
+        let mut targets = Vec::new();
+        
+        // Check tableau columns
+        for col in 0..7 {
+            let tableau_pos = Position::Tableau(col, self.game_state.tableau[col].len());
+            if self.can_drop_on_tableau(card, col) && !self.is_same_position(source, Position::Tableau(col, 0)) {
+                targets.push(tableau_pos);
+            }
+        }
+        
+        // Check foundation piles
+        for foundation in 0..4 {
+            let foundation_pos = Position::Foundation(foundation);
+            if self.can_drop_on_foundation(card, foundation) {
+                targets.push(foundation_pos);
+            }
+        }
+        
+        targets
+    }
+
+    fn can_drop_on_tableau(&self, card: Card, col: usize) -> bool {
+        if col >= 7 {
+            return false;
+        }
+        
+        let pile = &self.game_state.tableau[col];
+        if pile.is_empty() {
+            // Can only place King on empty tableau
+            return card.rank == game::deck::Rank::King;
+        }
+        
+        let top_card = pile.last().unwrap();
+        card.can_place_on_tableau(top_card)
+    }
+
+    fn can_drop_on_foundation(&self, card: Card, foundation: usize) -> bool {
+        if foundation >= 4 {
+            return false;
+        }
+        
+        let pile = &self.game_state.foundations[foundation];
+        let top_card = pile.last();
+        card.can_place_on_foundation(top_card)
+    }
+
+    fn is_same_position(&self, pos1: Position, pos2: Position) -> bool {
+        match (pos1, pos2) {
+            (Position::Tableau(col1, _), Position::Tableau(col2, _)) => col1 == col2,
+            _ => false,
+        }
+    }
+
+    fn render_game_board_with_drag_drop(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
+        let drag_info = if let Some(ref drag_state) = self.drag_state {
+            format!("Dragging {} cards from {:?} - {} valid targets (highlighted in green)", 
+                drag_state.dragged_cards.len(), 
+                drag_state.source_position,
+                drag_state.valid_drop_targets.len())
+        } else {
+            "Click on face-up cards to drag them!".to_string()
         };
 
         div()
@@ -63,6 +210,14 @@ impl SolitaireApp {
             .flex_col()
             .size_full()
             .gap_4()
+            .child(
+                // Drag state info
+                div()
+                    .text_sm()
+                    .text_color(white())
+                    .text_center()
+                    .child(drag_info)
+            )
             .child(
                 // Top row: Stock, Waste, and Foundations
                 div()
@@ -75,38 +230,145 @@ impl SolitaireApp {
                             .flex()
                             .gap_2()
                             .child(self.render_clickable_stock_pile(cx))
-                            .child(render_waste_pile(&self.game_state.waste)),
+                            .child(self.render_waste_pile_with_drag(cx)),
                     )
                     .child(
-                        // Right side: Four foundation piles
+                        // Right side: Four foundation piles with drop zones
                         div()
                             .flex()
                             .gap_2()
-                            .child(render_foundation_pile(0, &self.game_state.foundations[0]))
-                            .child(render_foundation_pile(1, &self.game_state.foundations[1]))
-                            .child(render_foundation_pile(2, &self.game_state.foundations[2]))
-                            .child(render_foundation_pile(3, &self.game_state.foundations[3])),
+                            .child(self.render_foundation_with_drop(0, cx))
+                            .child(self.render_foundation_with_drop(1, cx))
+                            .child(self.render_foundation_with_drop(2, cx))
+                            .child(self.render_foundation_with_drop(3, cx)),
                     ),
             )
             .child(
-                // Bottom row: Seven tableau columns
+                // Bottom row: Seven tableau columns with simple drag functionality
                 div()
                     .flex()
                     .justify_center()
                     .gap_2()
-                    .child(render_tableau_column(0, &self.game_state.tableau[0]))
-                    .child(render_tableau_column(1, &self.game_state.tableau[1]))
-                    .child(render_tableau_column(2, &self.game_state.tableau[2]))
-                    .child(render_tableau_column(3, &self.game_state.tableau[3]))
-                    .child(render_tableau_column(4, &self.game_state.tableau[4]))
-                    .child(render_tableau_column(5, &self.game_state.tableau[5]))
-                    .child(render_tableau_column(6, &self.game_state.tableau[6])),
+                    .child(self.render_tableau_with_drag(0, cx))
+                    .child(self.render_tableau_with_drag(1, cx))
+                    .child(self.render_tableau_with_drag(2, cx))
+                    .child(self.render_tableau_with_drag(3, cx))
+                    .child(self.render_tableau_with_drag(4, cx))
+                    .child(self.render_tableau_with_drag(5, cx))
+                    .child(self.render_tableau_with_drag(6, cx)),
             )
     }
 
-    fn render_clickable_stock_pile(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
-        use crate::game::deck::{Card, Rank, Suit};
+    fn render_tableau_with_drag(&mut self, col: usize, cx: &mut Context<Self>) -> impl IntoElement {
+        let cards = &self.game_state.tableau[col];
+        let is_valid_drop_target = self.drag_state.as_ref()
+            .map(|drag| drag.valid_drop_targets.contains(&Position::Tableau(col, cards.len())))
+            .unwrap_or(false);
 
+        let mut column = div()
+            .flex()
+            .flex_col()
+            .w(px(ui::CARD_WIDTH))
+            .min_h(px(ui::CARD_HEIGHT));
+
+        // Add drop zone styling if this is a valid drop target
+        if is_valid_drop_target {
+            column = column
+                .bg(rgb(0x22C55E)) // Green highlight for valid drop
+                .border_4()
+                .border_color(rgb(0x16A34A)) // Darker green border
+                .rounded_lg(); // More prominent rounded corners
+        }
+
+        if cards.is_empty() {
+            // Show empty placeholder for tableau with drop functionality
+            let drop_position = Position::Tableau(col, 0);
+            column = column
+                .child(ui::render_empty_pile(""))
+                .on_mouse_up(
+                    MouseButton::Left,
+                    cx.listener(move |app, _event, _window, cx| {
+                        println!("Dropped on empty tableau column {}", col);
+                        app.end_drag(Some(drop_position), cx);
+                    }),
+                );
+        } else {
+            // Render stacked cards with drag functionality
+            for (i, card) in cards.iter().enumerate() {
+                let position = Position::Tableau(col, i);
+                let is_top_card = i == cards.len() - 1;
+
+                let mut card_element = if is_top_card && card.face_up {
+                    // Top face-up card - make it draggable with proper positioning
+                    div()
+                        .relative() // Ensure proper positioning
+                        .child(ui::render_card(*card))
+                        .cursor_pointer()
+                        .hover(|style| style.shadow_xl().border_color(rgb(0x3B82F6)))
+                        .on_mouse_down(
+                            MouseButton::Left,
+                            cx.listener(move |app, _event, _window, cx| {
+                                println!("Mouse down on draggable card at {:?}", position);
+                                let mouse_pos = Point::new(px(0.0), px(0.0));
+                                app.start_drag(position, mouse_pos, cx);
+                            }),
+                        )
+                } else if is_top_card && !card.face_up {
+                    // Top face-down card - make it flippable with proper positioning
+                    div()
+                        .relative() // Ensure proper positioning
+                        .child(ui::render_card(*card))
+                        .cursor_pointer()
+                        .hover(|style| style.shadow_xl().border_color(rgb(0xF59E0B)))
+                        .on_mouse_down(
+                            MouseButton::Left,
+                            cx.listener(move |app, _event, _window, cx| {
+                                println!("Flipping card at {:?}", position);
+                                app.handle_action(GameAction::FlipCard(position), cx);
+                            }),
+                        )
+                } else {
+                    // Other cards - just render normally wrapped in div for type compatibility
+                    div().child(ui::render_card(*card))
+                };
+
+                // Add drop functionality to the top card area if it's a valid drop target
+                if is_top_card && is_valid_drop_target {
+                    let drop_position = Position::Tableau(col, cards.len());
+                    card_element = card_element.on_mouse_up(
+                        MouseButton::Left,
+                        cx.listener(move |app, _event, _window, cx| {
+                            println!("Dropped on tableau column {} (on top card)", col);
+                            app.end_drag(Some(drop_position), cx);
+                        }),
+                    );
+                }
+
+                if i == 0 {
+                    // First card - no offset
+                    column = column.child(card_element);
+                } else {
+                    // Subsequent cards - add negative margin to create stacking effect
+                    // For the top card, ensure it's positioned to receive mouse events
+                    let card_container = if is_top_card {
+                        div()
+                            .mt(px(-ui::CARD_HEIGHT + ui::TABLEAU_CARD_OFFSET))
+                            .relative() // Ensure proper positioning for mouse events
+                            .child(card_element)
+                    } else {
+                        div()
+                            .mt(px(-ui::CARD_HEIGHT + ui::TABLEAU_CARD_OFFSET))
+                            .child(card_element)
+                    };
+                    column = column.child(card_container);
+                }
+            }
+        }
+
+        column
+    }
+
+    fn render_clickable_stock_pile(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
         if self.game_state.stock.is_empty() {
             // Empty stock pile - clickable to recycle waste
             div()
@@ -123,7 +385,7 @@ impl SolitaireApp {
                 .cursor_pointer()
                 .hover(|style| style.border_color(rgb(0x3B82F6)))
                 .on_mouse_down(
-                    gpui::MouseButton::Left,
+                    MouseButton::Left,
                     cx.listener(|app, _event, _window, cx| {
                         println!("Stock pile clicked! (empty) - Recycling waste to stock");
                         app.handle_action(GameAction::DealFromStock, cx);
@@ -149,7 +411,7 @@ impl SolitaireApp {
                 .cursor_pointer()
                 .hover(|style| style.shadow_xl().border_color(rgb(0x3B82F6)))
                 .on_mouse_down(
-                    gpui::MouseButton::Left,
+                    MouseButton::Left,
                     cx.listener(|app, _event, _window, cx| {
                         println!("Stock pile clicked! (with cards) - Dealing cards");
                         app.handle_action(GameAction::DealFromStock, cx);
@@ -164,6 +426,104 @@ impl SolitaireApp {
                         .justify_center()
                         .child(div().text_color(white()).text_size(px(24.0)).child("🂠")),
                 )
+        }
+    }
+
+    fn render_waste_pile_with_drag(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
+        if self.game_state.waste.is_empty() {
+            div().child(ui::render_empty_pile("Waste"))
+        } else {
+            let top_card = *self.game_state.waste.last().unwrap();
+            let position = Position::Waste(self.game_state.waste.len() - 1);
+            
+            // Make the waste pile card draggable
+            div()
+                .child(ui::render_card(top_card))
+                .cursor_pointer()
+                .hover(|style| style.shadow_xl().border_color(rgb(0x3B82F6)))
+                .on_mouse_down(
+                    MouseButton::Left,
+                    cx.listener(move |app, _event, _window, cx| {
+                        println!("Mouse down on waste pile card at {:?}", position);
+                        let mouse_pos = Point::new(px(0.0), px(0.0));
+                        app.start_drag(position, mouse_pos, cx);
+                    }),
+                )
+        }
+    }
+
+    fn render_foundation_with_drop(&mut self, foundation: usize, cx: &mut Context<Self>) -> impl IntoElement {
+        let cards = &self.game_state.foundations[foundation];
+        let is_valid_drop_target = self.drag_state.as_ref()
+            .map(|drag| drag.valid_drop_targets.contains(&Position::Foundation(foundation)))
+            .unwrap_or(false);
+
+        let position = Position::Foundation(foundation);
+        
+        if cards.is_empty() {
+            // Empty foundation - show drop zone
+            let suit_labels = ["♥", "♦", "♣", "♠"];
+            let suit_colors = [
+                rgb(0xDC2626), // Hearts - red
+                rgb(0xDC2626), // Diamonds - red
+                rgb(0x000000), // Clubs - black
+                rgb(0x000000), // Spades - black
+            ];
+
+            let mut empty_foundation = div()
+                .w(px(ui::CARD_WIDTH))
+                .h(px(ui::CARD_HEIGHT))
+                .bg(rgb(0x1F2937)) // Dark gray background
+                .border_2()
+                .border_color(rgb(0x4B5563)) // Lighter gray border
+                .border_dashed()
+                .rounded_md()
+                .flex()
+                .items_center()
+                .justify_center()
+                .child(
+                    div()
+                        .text_color(suit_colors[foundation])
+                        .text_size(px(32.0))
+                        .child(suit_labels[foundation]),
+                );
+
+            if is_valid_drop_target {
+                empty_foundation = empty_foundation
+                    .bg(rgb(0x22C55E)) // Green highlight for valid drop zones
+                    .border_4()
+                    .border_color(rgb(0x16A34A)); // Darker green border
+            }
+
+            // Make it a drop target
+            empty_foundation
+                .on_mouse_up(
+                    MouseButton::Left,
+                    cx.listener(move |app, _event, _window, cx| {
+                        app.end_drag(Some(position), cx);
+                    }),
+                )
+        } else {
+            // Foundation with cards - show top card with drop functionality
+            let mut card_element = ui::render_card(*cards.last().unwrap());
+            
+            if is_valid_drop_target {
+                // Wrap in highlighted container with drop functionality
+                div()
+                    .bg(rgb(0x22C55E)) // Green highlight for valid drop
+                    .rounded_md()
+                    .p_1()
+                    .child(card_element)
+                    .on_mouse_up(
+                        MouseButton::Left,
+                        cx.listener(move |app, _event, _window, cx| {
+                            app.end_drag(Some(position), cx);
+                        }),
+                    )
+            } else {
+                // Just show the card without drop functionality when not a valid target
+                div().child(card_element)
+            }
         }
     }
 }
@@ -199,8 +559,8 @@ impl Render for SolitaireApp {
                             .child(self.game_state.summary()),
                     )
                     .child(
-                        // Main game board with clickable stock pile
-                        self.render_game_board_with_stock_click(cx),
+                        // Main game board with drag and drop functionality
+                        self.render_game_board_with_drag_drop(cx),
                     ),
             )
     }

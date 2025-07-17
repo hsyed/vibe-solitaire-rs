@@ -182,9 +182,151 @@ impl GameState {
     }
 
     /// Move a card from one position to another
-    pub fn move_card(&mut self, _from: Position, _to: Position) -> Result<(), String> {
-        // For now, just return an error - this will be implemented in later tasks
-        Err("Card moving not implemented yet".to_string())
+    pub fn move_card(&mut self, from: Position, to: Position) -> Result<(), String> {
+        // Get the card(s) to move
+        let cards_to_move = self.get_cards_at_position(from)?;
+        if cards_to_move.is_empty() {
+            return Err("No cards to move".to_string());
+        }
+
+        // Validate the move
+        if !self.is_valid_move(&cards_to_move, from, to) {
+            return Err("Invalid move".to_string());
+        }
+
+        // Remove cards from source
+        self.remove_cards_from_position(from, cards_to_move.len())?;
+
+        // Add cards to destination
+        self.add_cards_to_position(to, cards_to_move)?;
+
+        // Auto-flip newly exposed cards in tableau
+        if let Position::Tableau(col, _) = from {
+            if let Some(top_card) = self.tableau[col].last_mut() {
+                if !top_card.face_up {
+                    top_card.face_up = true;
+                }
+            }
+        }
+
+        self.move_count += 1;
+        Ok(())
+    }
+
+    fn get_cards_at_position(&self, position: Position) -> Result<Vec<Card>, String> {
+        match position {
+            Position::Tableau(col, idx) => {
+                if col >= 7 {
+                    return Err("Invalid tableau column".to_string());
+                }
+                let pile = &self.tableau[col];
+                if idx >= pile.len() {
+                    return Err("Invalid card index".to_string());
+                }
+                // For now, only move single cards from the top
+                if idx == pile.len() - 1 {
+                    Ok(vec![pile[idx]])
+                } else {
+                    Err("Can only move top card".to_string())
+                }
+            }
+            Position::Waste(idx) => {
+                if idx >= self.waste.len() {
+                    return Err("Invalid waste index".to_string());
+                }
+                if idx == self.waste.len() - 1 {
+                    Ok(vec![self.waste[idx]])
+                } else {
+                    Err("Can only move top card from waste".to_string())
+                }
+            }
+            _ => Err("Cannot move cards from this position".to_string()),
+        }
+    }
+
+    fn is_valid_move(&self, cards: &[Card], from: Position, to: Position) -> bool {
+        if cards.is_empty() {
+            return false;
+        }
+
+        let card = cards[0]; // For single card moves
+
+        match to {
+            Position::Tableau(col, _) => {
+                if col >= 7 {
+                    return false;
+                }
+                let pile = &self.tableau[col];
+                if pile.is_empty() {
+                    // Can only place King on empty tableau
+                    card.rank == crate::game::deck::Rank::King
+                } else {
+                    let top_card = pile.last().unwrap();
+                    card.can_place_on_tableau(top_card)
+                }
+            }
+            Position::Foundation(foundation) => {
+                if foundation >= 4 {
+                    return false;
+                }
+                let pile = &self.foundations[foundation];
+                let top_card = pile.last();
+                card.can_place_on_foundation(top_card)
+            }
+            _ => false, // Can't move to stock or waste
+        }
+    }
+
+    fn remove_cards_from_position(&mut self, position: Position, count: usize) -> Result<(), String> {
+        match position {
+            Position::Tableau(col, _) => {
+                if col >= 7 {
+                    return Err("Invalid tableau column".to_string());
+                }
+                let pile = &mut self.tableau[col];
+                if pile.len() < count {
+                    return Err("Not enough cards to remove".to_string());
+                }
+                for _ in 0..count {
+                    pile.pop();
+                }
+                Ok(())
+            }
+            Position::Waste(_) => {
+                if self.waste.len() < count {
+                    return Err("Not enough cards in waste".to_string());
+                }
+                for _ in 0..count {
+                    self.waste.pop();
+                }
+                Ok(())
+            }
+            _ => Err("Cannot remove cards from this position".to_string()),
+        }
+    }
+
+    fn add_cards_to_position(&mut self, position: Position, cards: Vec<Card>) -> Result<(), String> {
+        match position {
+            Position::Tableau(col, _) => {
+                if col >= 7 {
+                    return Err("Invalid tableau column".to_string());
+                }
+                for card in cards {
+                    self.tableau[col].push(card);
+                }
+                Ok(())
+            }
+            Position::Foundation(foundation) => {
+                if foundation >= 4 {
+                    return Err("Invalid foundation".to_string());
+                }
+                for card in cards {
+                    self.foundations[foundation].push(card);
+                }
+                Ok(())
+            }
+            _ => Err("Cannot add cards to this position".to_string()),
+        }
     }
 
     /// Check if a position can be clicked (for UI interaction)

@@ -44,7 +44,7 @@
   - Demonstrate working stock pile dealing and card flipping in running app
   - _Requirements: 3.3, 3.4, 3.5, 6.3_
 
-- [ ] 7. Implement drag and drop system with visual feedback
+- [x] 7. Implement drag and drop system with visual feedback
   - Create DragState struct to track dragging information
   - Add drag start handling to card components
   - Implement drop target validation logic
@@ -52,12 +52,12 @@
   - Show working drag-and-drop with visual feedback in running app
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 8. Implement game rule validation with move completion
-  - Add tableau move validation (alternating colors, descending rank)
-  - Add foundation move validation (same suit, ascending rank)
-  - Implement automatic card flipping when cards are moved
-  - Complete drag-and-drop moves with rule enforcement in running app
-  - _Requirements: 3.1, 3.2, 3.4_
+- [ ] 8. Enhance drag and drop with card sequences and visual feedback
+  - Implement dragging sequences of cards (not just single cards)
+  - Add visual drag feedback showing cards following mouse cursor
+  - Improve drop zone highlighting and feedback
+  - Test and demonstrate dragging card sequences with visual feedback in running app
+  - _Requirements: 2.2, 2.4, 2.5, 6.1_
 
 - [ ] 9. Add move history and undo functionality
   - Create Move and GameStateSnapshot structs
