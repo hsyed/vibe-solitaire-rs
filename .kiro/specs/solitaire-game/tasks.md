@@ -37,7 +37,7 @@
   - Display full solitaire game board with dealt cards in proper positions
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 7.3, 7.4, 7.5_
 
-- [ ] 6. Add basic click interactions with working game
+- [x] 6. Add basic click interactions with working game
   - Implement click handling for stock pile to deal cards
   - Add click handling for face-down cards to flip them
   - Create hover states for interactive elements
