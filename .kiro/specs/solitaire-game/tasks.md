@@ -7,7 +7,7 @@
   - Ensure app compiles and launches with empty window
   - _Requirements: Foundation for all requirements_
 
-- [ ] 2. Implement core card data structures
+- [x] 2. Implement core card data structures
   - Create Card struct with Suit, Rank, and face_up properties
   - Implement card comparison and utility methods
   - Create Position enum for tracking card locations
