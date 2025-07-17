@@ -45,6 +45,7 @@ cargo clippy
 - Use `println!` in tests for debug output (run with `--nocapture`)
 
 ## Code Style
+- impl should follow struct strictly -- DO NOT seperate struct declaration and impl.
 - Follow standard Rust formatting with `cargo fmt`
 - Use `cargo clippy` for linting
 - Comprehensive unit tests for all game logic
