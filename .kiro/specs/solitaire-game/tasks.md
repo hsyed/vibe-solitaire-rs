@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Set up project structure and dependencies
+- [x] 1. Set up project structure and dependencies
   - Create Cargo.toml with GPUI and gpui-component dependencies
   - Set up main.rs with basic GPUI app initialization that opens a window
   - Create module structure for game components
