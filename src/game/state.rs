@@ -1,8 +1,8 @@
-use std::fmt;
 use crate::game::actions::DrawCount;
 use crate::game::deck::{Card, create_deck};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
+use std::fmt;
 use std::time::SystemTime;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

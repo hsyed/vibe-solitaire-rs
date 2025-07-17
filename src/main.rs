@@ -6,7 +6,9 @@ use gpui::{
 mod game;
 mod ui;
 
+use game::deck::{Card, Rank, Suit};
 use game::state::GameState;
+use ui::CardView;
 
 struct SolitaireApp {
     game_state: GameState,
@@ -20,6 +22,7 @@ impl SolitaireApp {
     }
 }
 
+// TODO move this render logic elsewhere ?
 impl Render for SolitaireApp {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         div()
@@ -38,7 +41,30 @@ impl Render for SolitaireApp {
                             .text_xl()
                             .font_weight(FontWeight::BOLD)
                             .text_color(white())
-                            .child("Klondike Solitaire - Debug View"),
+                            .child("Klondike Solitaire - Card Component Test"),
+                    )
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(white())
+                            .child("Sample Cards - Testing CardComponent Rendering:"),
+                    )
+                    .child(
+                        // Sample cards display
+                        div()
+                            .flex()
+                            .gap_4()
+                            .flex_wrap()
+                            .p_4()
+                            // TODO these children should be cached somehow ? 
+                            .child(CardView::new(Card::new(Suit::Hearts, Rank::Ace, true)))
+                            .child(CardView::new(Card::new(Suit::Diamonds, Rank::King, true)))
+                            .child(CardView::new(Card::new(Suit::Clubs, Rank::Queen, true)))
+                            .child(CardView::new(Card::new(Suit::Spades, Rank::Jack, true)))
+                            .child(CardView::new(Card::new(Suit::Hearts, Rank::Ten, true)))
+                            .child(CardView::new(Card::new(Suit::Diamonds, Rank::Two, true)))
+                            .child(CardView::new(Card::new(Suit::Clubs, Rank::Seven, false))) // Face down
+                            .child(CardView::new(Card::new(Suit::Spades, Rank::Five, false))), // Face down
                     )
                     .child(
                         div()

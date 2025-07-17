@@ -78,7 +78,6 @@ impl fmt::Display for Card {
     }
 }
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Suit {
     Hearts,
@@ -127,7 +126,6 @@ pub enum Rank {
     King = 13,
 }
 
-
 impl Rank {
     /// Get all ranks in order
     pub fn all() -> [Rank; 13] {
@@ -168,14 +166,11 @@ impl Rank {
     }
 }
 
-
 impl fmt::Display for Rank {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.display())
     }
 }
-
-
 
 /// Create a standard 52-card deck
 pub fn create_deck() -> Vec<Card> {
@@ -313,8 +308,6 @@ mod tests {
         assert_eq!(format!("{}", face_up_card), "A♥");
         assert_eq!(format!("{}", face_down_card), "🂠");
     }
-
-
 
     #[test]
     fn test_suit_and_rank_symbols() {

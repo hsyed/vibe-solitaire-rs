@@ -22,7 +22,7 @@
   - Add debug display showing initial game state in the app window
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [ ] 4. Create basic GPUI card component with visual cards
+- [x] 4. Create basic GPUI card component with visual cards
   - Implement CardComponent with Render trait
   - Add card visual styling (colors, borders, dimensions)
   - Display card rank and suit symbols
