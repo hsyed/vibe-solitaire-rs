@@ -12,8 +12,6 @@ pub const CARD_WIDTH: f32 = 80.0;
 pub const CARD_HEIGHT: f32 = 112.0;
 
 // Layout constants
-const CARD_SPACING: f32 = 8.0;
-const PILE_SPACING: f32 = 16.0;
 pub const TABLEAU_CARD_OFFSET: f32 = 20.0; // Vertical offset for stacked cards
 
 /// Render a single card with optional click handler and hover state
