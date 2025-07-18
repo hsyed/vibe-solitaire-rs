@@ -22,10 +22,10 @@ The UI code needs to be knocked into shape by hand before making more progress. 
 
 * Some game state logic is mixed in with the render code, move this to the `game` mod.
 * Remove unused/duplicate render codepaths.
-* Drop zone styling is messed up - tableau and foundation piles get fully styled instead of appropriate drop zones.
+* Drop zone styling is messed up — tableau and foundation piles get fully styled instead of appropriate drop zones.
 * Drop zone reactivity has been unhooked, reimplement it.
 * Card element IDs are strings and constantly being recreated, twice per card per render.
-* Study state management - I'm sure it's incorrect.
+* Study state management — I'm sure it's incorrect.
 
 ## Running
 
