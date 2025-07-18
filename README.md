@@ -10,7 +10,7 @@ challenge as this codebase has little prominence in model weights.
 * Got Kiro to generate a spec and steering docs.
 * Generated MVP business logic and UI using Kiro, accepting mostly as-is to ensure functional progress.
 * Some fixes:
-    * Kiro invented a hacky drag and drop system instead of:wq relying on GPUI's `on_drag`/`on_drop` mechanism. I used 
+    * Kiro invented a hacky drag and drop system instead of relying on GPUI's `on_drag`/`on_drop` mechanism. I used 
       Claude Code to fix this.
 
 ## State
