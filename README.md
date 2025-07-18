@@ -1,6 +1,6 @@
 # Solitaire vibe coding session
 
-![Demo](images/demo_screenshot.png)
+![Demo](assets/demo_screenshot.png)
 
 This repo was started to test out Kiro. I set it a task of coding up Solitaire targeting Zed's UI framework GPUI - a 
 challenge as this codebase has little prominence in model weights.
