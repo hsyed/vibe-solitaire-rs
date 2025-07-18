@@ -5,6 +5,7 @@ use rand::thread_rng;
 use std::fmt;
 use std::time::SystemTime;
 
+// TODO simplify this. Only the index of the tableau and foundation is needed, stock is not needed and waste is just unit.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Position {
     Tableau(usize, usize), // column, index in column
@@ -106,7 +107,6 @@ impl GameState {
     pub fn handle_action(&mut self, action: GameAction) -> Result<(), String> {
         match action {
             GameAction::DealFromStock => self.deal_from_stock(),
-            GameAction::FlipCard(position) => self.flip_card(position),
             GameAction::MoveCard { from, to } => self.move_card(from, to),
             GameAction::NewGame => {
                 *self = Self::new_with_draw_count(self.draw_count);

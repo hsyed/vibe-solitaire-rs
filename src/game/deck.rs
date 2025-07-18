@@ -4,7 +4,7 @@ use std::fmt;
 pub struct Card {
     pub suit: Suit,
     pub rank: Rank,
-    pub face_up: bool,
+    pub face_up: bool, // TODO this should be removed, weather its shown or not is determined by the game state
 }
 
 impl Card {
@@ -65,6 +65,11 @@ impl Card {
             rank: self.rank,
             face_up: !self.face_up,
         }
+    }
+
+    /// Get a unique identifier for this card (e.g., "A♥", "K♠")
+    pub fn id(&self) -> String {
+        format!("{}{}", self.rank.display(), self.suit.symbol())
     }
 }
 

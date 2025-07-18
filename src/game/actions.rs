@@ -4,8 +4,6 @@ use crate::game::state::Position;
 pub enum GameAction {
     /// Move card(s) from one position to another
     MoveCard { from: Position, to: Position },
-    /// Flip a face-down card to face-up
-    FlipCard(Position),
     /// Deal cards from stock to waste pile
     DealFromStock,
     /// Start a new game

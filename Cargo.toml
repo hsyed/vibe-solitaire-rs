@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-gpui = { git = "https://github.com/zed-industries/zed" }
+gpui = { git = "https://github.com/zed-industries/zed" , rev = "c1307cead48ba96c663d9d074ebeb21a1c90d96d"}
 rand = "0.8"

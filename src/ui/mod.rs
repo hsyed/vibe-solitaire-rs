@@ -41,26 +41,13 @@ pub fn render_card_interactive(
             .size_full()
             .flex()
             .flex_col()
+            .p_1()
             .child(
-                // Top-left rank and suit
                 div()
-                    .flex()
-                    .flex_col()
-                    .items_center()
-                    .p_1()
-                    .child(
-                        div()
-                            .text_color(text_color)
-                            .font_weight(FontWeight::BOLD)
-                            .text_size(px(14.0))
-                            .child(card.rank.display()),
-                    )
-                    .child(
-                        div()
-                            .text_color(text_color)
-                            .text_size(px(16.0))
-                            .child(card.suit.symbol()),
-                    ),
+                    .text_color(text_color)
+                    .font_weight(FontWeight::BOLD)
+                    .text_size(px(14.0))
+                    .child(card.rank.display()),
             )
             .child(
                 // Center suit symbol (larger)
@@ -70,6 +57,17 @@ pub fn render_card_interactive(
                         .text_size(px(32.0))
                         .child(card.suit.symbol()),
                 ),
+            )
+            .child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .items_end()
+                    .justify_end()
+                    .text_color(text_color)
+                    .font_weight(FontWeight::BOLD)
+                    .text_size(px(14.0))
+                    .child(card.rank.display()),
             )
     };
 
