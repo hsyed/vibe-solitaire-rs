@@ -223,13 +223,13 @@ impl GameState {
                 if idx >= pile.len() {
                     return Err("Invalid card index".to_string());
                 }
-                
+
                 // Get all cards from the specified index to the end (card sequences)
                 let mut cards = Vec::new();
                 for i in idx..pile.len() {
                     cards.push(pile[i]);
                 }
-                
+
                 // Validate that this forms a valid sequence
                 if self.is_valid_card_sequence(&cards) {
                     Ok(cards)
@@ -256,24 +256,24 @@ impl GameState {
         if cards.is_empty() {
             return false;
         }
-        
+
         // Single card is always valid
         if cards.len() == 1 {
             return cards[0].face_up;
         }
-        
+
         // All cards must be face-up
         if !cards.iter().all(|card| card.face_up) {
             return false;
         }
-        
+
         // Check that each card can be placed on the previous one (descending alternating colors)
         for i in 1..cards.len() {
             if !cards[i].can_place_on_tableau(&cards[i - 1]) {
                 return false;
             }
         }
-        
+
         true
     }
 
@@ -314,7 +314,11 @@ impl GameState {
         }
     }
 
-    fn remove_cards_from_position(&mut self, position: Position, count: usize) -> Result<(), String> {
+    fn remove_cards_from_position(
+        &mut self,
+        position: Position,
+        count: usize,
+    ) -> Result<(), String> {
         match position {
             Position::Tableau(col, _) => {
                 if col >= 7 {
@@ -342,7 +346,11 @@ impl GameState {
         }
     }
 
-    fn add_cards_to_position(&mut self, position: Position, cards: Vec<Card>) -> Result<(), String> {
+    fn add_cards_to_position(
+        &mut self,
+        position: Position,
+        cards: Vec<Card>,
+    ) -> Result<(), String> {
         match position {
             Position::Tableau(col, _) => {
                 if col >= 7 {

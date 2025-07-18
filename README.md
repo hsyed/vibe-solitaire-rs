@@ -20,7 +20,6 @@ such a good way to explore and learn languages and frameworks.
 
 The UI code needs to be knocked into shape by hand before making more progress. Fixes needed:
 
-* UI code needs to be moved out of `main.rs` into the `ui` module.
 * Some game state logic is mixed in with the render code, move this to the `game` mod.
 * Remove unused/duplicate render codepaths.
 * Drop zone styling is messed up - tableau and foundation piles get fully styled instead of appropriate drop zones.
